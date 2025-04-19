@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import Toolbar from './Toolbar';
 import PropertiesPanel from './PropertiesPanel';
 
+// Inside the FloorCanvas component, add handleDragEnd:
 const FloorCanvas = () => {
   const [elements, setElements] = useState([]);
   const [selectedElement, setSelectedElement] = useState(null);
@@ -63,7 +64,7 @@ const FloorCanvas = () => {
       y: Math.round(position.y / gridSettings.gridSize) * gridSettings.gridSize
     };
   };
-  
+
   const handleAddColumn = (position) => {
     const snappedPos = snapToGrid(position);
     
@@ -344,6 +345,7 @@ const FloorCanvas = () => {
               onUpdate={(updates) => setElements(elements.map(el => 
                 el.id === element.id ? { ...el, ...updates } : el
               ))}
+              snapToGrid={snapToGrid}
             />
           ))}
         </Layer>
@@ -360,13 +362,18 @@ const FloorCanvas = () => {
       )}
     </div>
     );
-
 };
 
-const ElementRenderer = ({ element, onSelect, onUpdate }) => {
+const ElementRenderer = ({ element, onSelect, handleDragEnd }) => {
   if (element.type === 'column') {
     return (
-      <Group onClick={onSelect}>
+      <Group 
+        draggable
+        onDragStart={onSelect}
+        onDragEnd={(e) => handleDragEnd(e, element)}
+        x={element.x}
+        y={element.y}
+      >
         <Rect
           x={element.x}
           y={element.y}
@@ -389,7 +396,13 @@ const ElementRenderer = ({ element, onSelect, onUpdate }) => {
 
   if (element.type === 'beam') {
     return (
-      <Group onClick={onSelect}>
+      <Group
+        draggable
+        onDragStart={onSelect}
+        onDragEnd={(e) => handleDragEnd(e, element)}
+        x={element.points[0]}
+        y={element.points[1]}
+      >
         <Line
           points={element.points}
           stroke="#e74c3c"
@@ -407,14 +420,20 @@ const ElementRenderer = ({ element, onSelect, onUpdate }) => {
       </Group>
     );
   }
-  
+
   if (element.type === 'wall') {
     const [x1, y1, x2, y2] = element.points;
     const angle = Math.atan2(y2 - y1, x2 - x1);
     const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     
     return (
-      <Group onClick={onSelect}>
+      <Group
+        draggable
+        onDragStart={onSelect}
+        onDragEnd={(e) => handleDragEnd(e, element)}
+        x={element.points[0]}
+        y={element.points[1]}
+      >
         <Line
           points={element.points}
           stroke="#34495e"
@@ -436,87 +455,86 @@ const ElementRenderer = ({ element, onSelect, onUpdate }) => {
   }
   
   if (element.type === 'door') {
-    // Draw door as a rectangle with an arc to show swing direction
     return (
-      <Group onClick={onSelect}>
+      <Group 
+        draggable
+        onDragStart={onSelect}
+        onDragEnd={(e) => handleDragEnd(e, element)}
+        x={element.x}
+        y={element.y}
+      >
         <Rect
           x={element.x - element.width / 2}
           y={element.y - element.thickness / 2}
           width={element.width}
           height={element.thickness}
-          fill="#3498db"
+          fill="rgba(46, 204, 113, 0.3)"  // Semi-transparent green
+          stroke="#2ecc71"  // Bright green border
+          strokeWidth={2}
           rotation={element.angle}
-          offsetX={0}
-          offsetY={0}
         />
-        {/* Door swing arc */}
+        {/* Door swing indicator */}
         <Line
           points={[
             element.x, element.y,
-            element.x + element.width * 0.8 * Math.cos((element.angle + 90) * Math.PI / 180), 
+            element.x + element.width * 0.8 * Math.cos((element.angle + 90) * Math.PI / 180),
             element.y + element.width * 0.8 * Math.sin((element.angle + 90) * Math.PI / 180)
           ]}
-          stroke="#3498db"
+          stroke="#2ecc71"
           strokeWidth={2}
           dash={[5, 5]}
         />
-        <Text
-          x={element.x}
-          y={element.y}
-          text={element.name}
-          fontSize={14}
-          fill="black"
-          rotation={element.angle}
+        {/* Door opening indicator */}
+        <Line
+          points={[
+            element.x - element.width/2 * Math.cos(element.angle * Math.PI / 180),
+            element.y - element.width/2 * Math.sin(element.angle * Math.PI / 180),
+            element.x + element.width/2 * Math.cos(element.angle * Math.PI / 180),
+            element.y + element.width/2 * Math.sin(element.angle * Math.PI / 180)
+          ]}
+          stroke="#2ecc71"
+          strokeWidth={2}
         />
       </Group>
     );
   }
-  
+
   if (element.type === 'window') {
-    // Draw window as a rectangle with lines to indicate glass
     return (
-      <Group onClick={onSelect}>
+      <Group 
+        draggable
+        onDragStart={onSelect}
+        onDragEnd={(e) => handleDragEnd(e, element)}
+        x={element.x}
+        y={element.y}
+      >
         <Rect
           x={element.x - element.width / 2}
           y={element.y - element.thickness / 2}
           width={element.width}
           height={element.thickness}
-          fill="#ecf0f1"
-          stroke="#bdc3c7"
+          fill="rgba(241, 196, 15, 0.3)"  // Semi-transparent orange
+          stroke="#f1c40f"  // Bright orange border
           strokeWidth={2}
           rotation={element.angle}
-          offsetX={0}
-          offsetY={0}
         />
-        {/* Window panes */}
+        {/* Window cross pattern */}
         <Line
           points={[
-            element.x - element.width / 4, element.y - element.thickness / 2,
-            element.x - element.width / 4, element.y + element.thickness / 2
+            element.x - element.width/4, element.y - element.thickness/2,
+            element.x + element.width/4, element.y + element.thickness/2
           ]}
-          stroke="#bdc3c7"
-          strokeWidth={2}
+          stroke="#f1c40f"
+          strokeWidth={1}
           rotation={element.angle}
-          offsetX={0}
-          offsetY={0}
         />
         <Line
           points={[
-            element.x + element.width / 4, element.y - element.thickness / 2,
-            element.x + element.width / 4, element.y + element.thickness / 2
+            element.x + element.width/4, element.y - element.thickness/2,
+            element.x - element.width/4, element.y + element.thickness/2
           ]}
-          stroke="#bdc3c7"
-          strokeWidth={2}
-          rotation={element.angle}
-          offsetX={0}
-          offsetY={0}
-        />
-        <Text
-          x={element.x}
-          y={element.y}
-          text={element.name}
-          fontSize={14}
-          fill="black"
+          stroke="#f1c40f"
+          strokeWidth={1}
           rotation={element.angle}
         />
       </Group>
