@@ -7,6 +7,8 @@ import PropertiesPanel from './PropertiesPanel';
 // Inside the FloorCanvas component, add handleDragEnd:
 const FloorCanvas = () => {
   const [elements, setElements] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const [selectedElement, setSelectedElement] = useState(null);
   const [mode, setMode] = useState('column');
   const [materialProps, setMaterialProps] = useState({
@@ -42,6 +44,36 @@ const FloorCanvas = () => {
   const stageRef = useRef();
   const layerRef = useRef();
 
+  // Function to update elements with history tracking
+  const updateElementsWithHistory = (newElements) => {
+    // Add current state to history, removing any future states if we're in the middle of history
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push([...elements]);
+    
+    // Update history state
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    
+    // Update elements
+    setElements(newElements);
+  };
+
+  // Undo function
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setElements([...history[historyIndex - 1]]);
+    }
+  };
+
+  // Redo function
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setElements([...history[historyIndex + 1]]);
+    }
+  };
+
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -54,6 +86,25 @@ const FloorCanvas = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // Add keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Undo: Ctrl+Z
+      if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Redo: Ctrl+Y
+      else if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [historyIndex, history]);
   
   // Snap position to grid
   const snapToGrid = (position) => {
@@ -78,7 +129,7 @@ const FloorCanvas = () => {
       height: materialProps.columnSize,
       material: { ...materialProps }
     };
-    setElements([...elements, newColumn]);
+    updateElementsWithHistory([...elements, newColumn]);
   };
 
   const handleAddBeam = (startPos) => {
@@ -93,7 +144,7 @@ const FloorCanvas = () => {
       depth: materialProps.beamDepth,
       material: { ...materialProps }
     };
-    setElements([...elements, newBeam]);
+    updateElementsWithHistory([...elements, newBeam]);
   };
   
   // Start drawing a wall
@@ -111,7 +162,7 @@ const FloorCanvas = () => {
       thickness: wallProps.thickness,
       height: wallProps.height
     };
-    setElements([...elements, newWall]);
+    setElements([...elements, newWall]); // Don't track history for temporary wall
   };
   
   // Update wall while drawing
@@ -135,6 +186,8 @@ const FloorCanvas = () => {
   const handleFinishDrawingWall = () => {
     setIsDrawing(false);
     setStartPoint(null);
+    // Add to history when wall drawing is complete
+    updateElementsWithHistory([...elements]);
   };
   
   // Add a door to a wall
@@ -191,7 +244,7 @@ const FloorCanvas = () => {
         thickness: closestWall.thickness
       };
       
-      setElements([...elements, newDoor]);
+      updateElementsWithHistory([...elements, newDoor]);
     }
   };
   
@@ -249,7 +302,7 @@ const FloorCanvas = () => {
         thickness: closestWall.thickness
       };
       
-      setElements([...elements, newWindow]);
+      updateElementsWithHistory([...elements, newWindow]);
     }
   };
   

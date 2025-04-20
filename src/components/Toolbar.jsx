@@ -15,8 +15,36 @@ import {
 } from '@mui/material';
 import Image from 'next/image';
 
-const Toolbar = ({ mode, setMode, materialProps, setMaterialProps, gridSettings, setGridSettings, wallProps, setWallProps }) => (
+const Toolbar = ({ mode, setMode, materialProps, setMaterialProps, gridSettings, setGridSettings, wallProps, setWallProps, onUndo, onRedo, canUndo, canRedo }) => (
   <Paper sx={{ p: 2, m: 2, width: 350 }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+      <Typography variant="h6">Floor Plan Designer</Typography>
+      <ButtonGroup size="small">
+        <Tooltip title="Undo (Ctrl+Z)">
+          <span>
+            <Button 
+              onClick={onUndo} 
+              disabled={!canUndo}
+              aria-label="Undo"
+            >
+              <span style={{ fontSize: '1.2rem' }}>↩</span>
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title="Redo (Ctrl+Y)">
+          <span>
+            <Button 
+              onClick={onRedo} 
+              disabled={!canRedo}
+              aria-label="Redo"
+            >
+              <span style={{ fontSize: '1.2rem' }}>↪</span>
+            </Button>
+          </span>
+        </Tooltip>
+      </ButtonGroup>
+    </Box>
+    
     <Typography variant="h6" gutterBottom>Structural Elements</Typography>
     
     <Box sx={{ mb: 3 }}>
